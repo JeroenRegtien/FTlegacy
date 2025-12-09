@@ -4,7 +4,7 @@
  * Original code by Jeroen Regtien, December 2023 with revisions since.
  * 
  * @details
- * Suported interfaces:
+ * Supported interfaces:
  *      1984:  Parallel Interface Commodore, IBM, Atari: 30562, 30563, 30565
  *      1991:  Parallel Universal Interface: 30520
  *      1991:  Parallel CVK Interface: XXXXX
@@ -15,20 +15,21 @@
  *
  * Supported Shields: none
  * 
- * Supported Arduino's: UNO R3, UNO R4 Minima, MEGA, Nano
- * check UNO R4 Wifi, GIGA
+ * Supported Arduino's: UNO R3, UNO R4 Minima/Wifi, MEGA, Nano
  *
  * The library consists of two files:
  * FTlegacy.h - header file for the FTmodule, FTcontroller and FTtimer class \n 
  * FTlegacy.cpp - C++ implementation of class, methods and utility functions \n 
  *
  * References:
- *       http://www.ftcommunity.de/ftpedia_ausgaben/ftpedia-2014-1.pdf
- *       http://www.ftcommunity.de/ftpedia_ausgaben/ftpedia-2014-2.pdf
+ *      https://www.ftcommunity.de/ftpedia/2014/2014-1/ftpedia-2014-1.pdf
+ *      https://www.ftcommunity.de/ftpedia/2014/2014-2/ftpedia-2014-2.pdf
+ *      https://www.ftcommunity.de/ftpedia/2023/2023-4/ftpedia-2023-4.pdf
+ *      https://www.ftcommunity.de/ftpedia/2025/2025-2/ftpedia-2025-2.pdf
  *
  * The MIT License (MIT)
  * 
- * Copyright (c) 2023 Jeroen Regtien
+ * Copyright (c) 2023-2025 Jeroen Regtien
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,118 +56,30 @@
                 Consolidated and rationalised. Given Arduino UNO memory limitations, 
                 two separate classes introduced: FTlegacy for legacy fischertechnik 
                 interfaces and FTmodule also including 3rd party shields and controllers. 
-                Version after many prototype tests. \n 
-                
-
+                Version after many prototype tests. \n
+   Version 1.0 - First operational release. Added FTplotter and FTencoder classes \n
+            
 */
 
 #ifndef _FT_LEGACY_H
 #define _FT_LEGACY_H
 
 /// @brief sotfware library release version
-#define VERSION "FT_L V0.9"
+#define VERSION "FT_L V1.0"
 
-/// @brief standardised E1 input channel
-#define ft_E1 1
-/// @brief standardised E2 input channel
-#define ft_E2 2
-/// @brief standardised E3 input channel
-#define ft_E3 3
-/// @brief standardised E4 input channel
-#define ft_E4 4
-/// @brief standardised E5 input channel
-#define ft_E5 5
-/// @brief standardised E6 input channel
-#define ft_E6 6
-/// @brief standardised E7 input channel
-#define ft_E7 7
-/// @brief standardised E8 input channel
-#define ft_E8 8
-/// @brief standardised E1 input channel optional extension interface
-#define ft_E9 9
-/// @brief standardised E2 input channel optional extension interface
-#define ft_E10 10
-/// @brief standardised E3 input channel optional extension interface
-#define ft_E11 11
-/// @brief standardised E4 input channel optional extension interface
-#define ft_E12 12
-/// @brief standardised E5 input channel optional extension interface
-#define ft_E13 13
-/// @brief standardised E6 input channel optional extension interface
-#define ft_E14 14
-/// @brief standardised E7 input channel optional extension interface
-#define ft_E15 15
-/// @brief standardised E8 input channel optional extension interface
-#define ft_E16 16
 
-/// @brief bidirectional Motor 1
-#define ft_M1 1
-/// @brief bidirectional Motor 2
-#define ft_M2 2
-/// @brief bidirectional Motor 3
-#define ft_M3 3
-/// @brief bidirectional Motor 4
-#define ft_M4 4
-/// @brief bidirectional Motor 1 optional extension interface
-#define ft_M5 5
-/// @brief bidirectional Motor 1 optional extension interface
-#define ft_M6 6
-/// @brief bidirectional Motor 1 optional extension interface
-#define ft_M7 7
-/// @brief bidirectional Motor 1 optional extension interface
-#define ft_M8 8
-
-// numbers for lamp actuators, two per motor
-// NOTE: lamp 1&2, 3&4, etc can never be activated at the same time, it is either/or
-/// @brief standardised output channel 1, using half of motor 1 output
-#define ft_O1 1
-/// @brief standardised output channel 1, using the other half of motor 1 output
-#define ft_O2 2
-/// @brief standardised output channel 1, using half of motor 2 output
-#define ft_O3 3
-/// @brief standardised output channel 1, using the other half of motor 2 output
-#define ft_O4 4
-/// @brief standardised output channel 1, using half of motor 3 output
-#define ft_O5 5
-/// @brief standardised output channel 1, using the other half of motor 3 output
-#define ft_O6 6
-/// @brief standardised output channel 1, using half of motor 4 output
-#define ft_O7 7
-/// @brief standardised output channel 1, using the other half of motor 4 output
-#define ft_O8 8
-/// @brief standardised output channel 1, using half of extension motor 1 output
-#define ft_O9 9
-/// @brief standardised output channel 1, using the other half of extension motor 1 output
-#define ft_O10 10
-/// @brief standardised output channel 1, using half of extension motor 2 output
-#define ft_O11 11
-/// @brief standardised output channel 1, using the other half of extension motor 2 output
-#define ft_O12 12
-/// @brief standardised output channel 1, using half of extension motor 3 output
-#define ft_O13 13
-/// @brief standardised output channel 1, using the other half of extension motor 3 output
-#define ft_O14 14
-/// @brief standardised output channel 1, using half of extension motor 4 output
-#define ft_O15 15
-/// @brief standardised output channel 1, using the other half of extension motor 4 output
-#define ft_O16 16
-
-/// @brief standardised global ON for interface outputs
-#define ON true
-/// @brief standardised global OFF for interface outputs
-#define OFF false
 
 #include <Arduino.h>
 
-#include <Adafruit_GFX.h>
-#define SSD1306_NO_SPLASH
-#include <Adafruit_SSD1306.h>
+// #include <Adafruit_GFX.h>
+// #define SSD1306_NO_SPLASH
+// #include <Adafruit_SSD1306.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 #include <SoftwareSerial.h>
-
+#include <Wire.h>
 #include <hd44780.h>                        // main hd44780 header for LCD
 #include <hd44780ioClass/hd44780_I2Cexp.h>  // i2c expander i/o class header
 
@@ -174,6 +87,7 @@ const int UNO = 1;
 const int MEGA = 2;
 const int UNO4 =3;
 const int NANO = 4;
+const int ESP32 = 5;
 const int OTHER = 0;
 
 // retrieve type of board from Arduino 
@@ -248,7 +162,7 @@ enum typeIFace {
   ROBO = 5,
   DID_UNO = 6,  
   DID_MEGA = 7,
-  ADA = 8,
+  ADA_UNO = 8,
   CONT_MINI = 9,
   CONT_MAXOUT = 10,
   CONT_MICRO = 11,
@@ -429,6 +343,7 @@ class FTlegacy {
 
 public:
    int type;
+   int ftInfo;
 
 protected:
   int number = 0;
@@ -459,8 +374,8 @@ private:  // only visible in the defined class and classes that inherit
   enum {
     // Pin name / Interface pin
     DATACOUNTIN,  // DATA/COUNT IN
-    TRIGGERX,     // TRIGGER X
-    TRIGGERY,     // TRIGGER Y
+    TRIGGERY,     // TRIGGER X
+    TRIGGERX,     // TRIGGER Y
     DATAOUT,      // DATA OUT
     CLOCK,        // CLOCK
     LOADOUT,      // LOAD OUT
@@ -492,8 +407,8 @@ private:
   // Private function called during construction
   void InitPar(
     byte pin_datacountin,
-    byte pin_triggerx,
     byte pin_triggery,
+    byte pin_triggerx,
     byte pin_dataout,
     byte pin_clock,
     byte pin_loadout,
@@ -597,6 +512,7 @@ public:  // motor control methods
   /// \param M motor number
   /// \param E switch number
   /// \param until ON/true or OFF/false
+  /// \param dir direction of type motorDirection
   /// \return bool returns true of target not hit.
   bool getMotorUntil(int M, int E, bool until, motorDirection dir);
 
@@ -604,6 +520,7 @@ public:  // motor control methods
   /// \param M motor number
   /// \param E switch number
   /// \param until ON/true or OFF/false
+  /// \param dir direction of type motorDirection
   /// \return bool returns true of target not hit.
   bool setMotorUntil(int M, int E, bool until, motorDirection dir);
 
@@ -611,6 +528,8 @@ public:  // motor control methods
   /// \param M motor number
   /// \param E switch number
   /// \param until ON/true or OFF/false
+  /// \param dir direction of type motorDirection
+  /// \param int maxCount maximum numer of counts
   /// \return bool returns false when end point reached
   bool setMotorUntilCount(int M, int E, bool until, motorDirection dir, int maxCount);
 
@@ -620,6 +539,8 @@ public:  // motor control methods
   /// \param until1 ON/true or OFF/false
   /// \param E2 switch number
   /// \param until2 ON/true or OFF/false
+  /// \param dir direction of type motorDirection
+  /// \param int maxCount maximum numer of counts
   /// \return bool returns false when end point reached
   bool setMotorUntilOrCount(int M, int E1, bool until1, int E2, bool until2, motorDirection dir, int maxCount);
  
@@ -636,7 +557,7 @@ public:  // motor control methods
   /// @param status ON (1) or OFF (0)
   void setOutput(int O, int status);
 
-/// @brief tests whether target end switch was hit whilst output is active
+  /// @brief tests whether target end switch was hit whilst output is active
   /// \param O motor number
   /// \param E switch number
   /// \param until ON/true or OFF/false
@@ -666,11 +587,23 @@ public:  // motor control methods
   /// \return bool returns false when end point reached
   bool setOutputUntilOrCount(int O, int E1, bool until1, int E2, bool until2, int maxCount);
 
+  /// @brief switches magnet ON
+  /// @param M motor number for magnet, one of ft_M1 to ft_M4
+  void magnetON(int M);
+
+  /// @brief switches magnet OFF
+  /// @param M motor number for magnet, one of ft_M1 to ft_M4
+  void magnetOFF(int M);
+    
   /// @brief sends output buffer to interface
   void setOutputs();         // rename to sendoutputs
 
   /// @brief print output buffer to serial monitor
   void printOutputBuffer();
+
+  /// @brief set information level towards Arduino IDE monitor.
+  /// @param level , can be 0-3, with 0 meaning no input and 3 maximum information. Impacts performance
+  void setInfo(int level);
 
 public:  // display IO methods
   /// @brief updates LCD display with current in- and output status information
@@ -680,8 +613,11 @@ private:
   void ftUpdateLCD(int type);
   void ftLCD_M(int x, int y, int M);
   void ftLCD_E(int x, int y, int M);
-};
 
+public:  // display IO methods
+  char displayMotor(int M);
+
+};
 /// FTcontroller class
 ///
 /// @details   Class to manage the (micro)controller
@@ -726,11 +662,15 @@ public:
   /// \return an integer that defines the microcontroller board.
   int getBoard();
 
+  /// Checks whether an I2C device is attached, assumes it to be display
+  /// \return true or false.
+  bool isLCDconnected();
+
   /// Send a text message to the display (if connected)
   /// \param x-index on LCD display
   /// \param y-index on LCD display
   /// \param *message to display
-  void ftMessageToDisplay(int x, int y, char *messsage);
+  void ftMessageToDisplay(int x, int y, char *messsage, bool clear);
 
 public:
   FTlegacy ftLegacies[maxBoards];
@@ -780,6 +720,242 @@ public:
   void reset();
 
 };
+
+
+class FTstepper : public FTlegacy {
+
+private:
+  FTlegacy &interface;
+  int origin;
+  int minimum;
+  int maximum;
+  int currentPosition;
+  int coilA;
+  int coilB;
+
+public:
+  // the constructor
+  FTstepper(FTlegacy &choice, int MA, int MB)
+    : interface(choice) {
+    coilA = MA;
+    coilB = MB;
+    origin = 0;
+  }
+
+  void setOrigin(int newOrigin);
+  void setRange(int newMinimum, int newMaximum);
+  void moveToOrigin();
+  void moveToPosition(int position);
+  void moveRelative(int delta);
+  void setStepperSTOP();
+
+private:
+  void setStep(int steps);
+
+};
+
+class FTstepperXY : public FTlegacy {
+
+private:
+  FTlegacy &interface;
+  int originX;
+  int originY;
+  int maxX;
+  int maxY;
+  int coilA1;
+  int coilA2;
+  int coilB1;
+  int coilB2;
+  int actuator;
+  int currentX;
+  int currentY;
+
+public:
+  // the constructor
+  FTstepperXY(FTlegacy &choice, int C1, int C2, int C3, int C4, int pen)
+    : interface(choice) {
+    coilA1 = C1;
+    coilA2 = C2;
+    coilB1 = C3;
+    coilB2 = C4;
+    actuator = pen;
+    originX = 0;
+    originY = 0;
+    maxX = 680;
+    maxY = 500;
+    currentX = 0;
+    currentY = 0;
+  }
+
+  // basic methods
+  void setStepX(int steps);
+  void setStepY(int steps);
+  void setStepXY(int stepX, int stepY);
+  void setOrigin(int origX, int origY);
+  bool findOrigin(int STOP_X, int STOP_Y);
+  void setMaximum(int maxX, int maxY);
+  void setPosition(int posX, int posY);
+  void setArea(int origX, int origY, int maxX, int maxY);
+  void moveToPosition(int posX, int posY);
+  void moveRelative(int deltaX, int deltaY);
+  void setStepperSTOP();
+
+  // utility functions
+  void penDown();
+  void penUp();
+  void line(int posX, int posY);
+  void lineRelative(int posX, int posY);
+  void circle(int orX, int orY, int radius);
+  void ellips(int orX, int orY, int radiusX, int radiusY);
+  void box(int posX, int posY, int sizeX, int sizeY, int hatch);
+  void axis(int xPB, int xPE, int yPB, int yPE,     // Plot coordinate range B=begin
+            int xAB, int xAE, int yAB, int yAE,     // Axis coordinate range E=end
+            bool label, char *xLabel, char *yLabel, char *title,// label ingo
+            int xInterval, int yInterval, int ticklength );       // # tickmarks
+  void curve(int numberOfPoints, int curveX[], int curveY[]);
+  void plotChar(int PosX, int PosY, int scale, int direction, char c);
+  void plotText(int PosX, int PosY, int scale, int direction, char *string);
+
+private:
+  void stepper(motorDirection C1, motorDirection C2, motorDirection C3);
+  bool setStepXandY(int stepsX, int stepsY);
+  void drawSegment(int &xFrom, int xTo, int &yFrom, int yTo, int scale, float angle);
+};
+
+// section for encoder motors
+
+enum FTencoderMode { E_STD=0, E_INT=1};  // STD: standard 'E' type pulse, INT: arduino interrupt
+
+class FTencoderMotor
+{
+public:
+   FTlegacy* interface;
+   int encoderSignal;
+   int encoderMode;
+   int motor;
+   int sensor;
+   int origin;
+   int maximum;
+   volatile long int encoderPos = 0;
+   long int startPos = 0;
+   bool running = false;
+   bool movingRight;
+
+public:
+    FTencoderMotor(FTlegacy* choice, int motorID, FTencoderMode modeChoice, int sensorID);
+    void updateEncoder();
+
+private:
+    static FTencoderMotor* sEncoder;
+    static void updateEncoderISR();
+    bool setStepsOLD(int steps);
+    bool setStepsNEW(int steps);
+
+public:
+   void begin();
+   bool setSteps(int steps);
+   void setOrigin(int origin);
+   int getPosition();
+   void setRange(int origin, int maximum);
+   bool moveToOrigin();
+   bool moveToPosition(int position);
+   bool moveRelative(int delta);
+   bool findHome(int endPin, motorDirection dir);
+   void setMotorCW();
+   void setMotorCCW();
+   void setMotorSTOP();
+};
+
+
+/// @brief standardised E1 input channel
+#define ft_E1 1
+/// @brief standardised E2 input channel
+#define ft_E2 2
+/// @brief standardised E3 input channel
+#define ft_E3 3
+/// @brief standardised E4 input channel
+#define ft_E4 4
+/// @brief standardised E5 input channel
+#define ft_E5 5
+/// @brief standardised E6 input channel
+#define ft_E6 6
+/// @brief standardised E7 input channel
+#define ft_E7 7
+/// @brief standardised E8 input channel
+#define ft_E8 8
+/// @brief standardised E1 input channel optional extension interface
+#define ft_E9 9
+/// @brief standardised E2 input channel optional extension interface
+#define ft_E10 10
+/// @brief standardised E3 input channel optional extension interface
+#define ft_E11 11
+/// @brief standardised E4 input channel optional extension interface
+#define ft_E12 12
+/// @brief standardised E5 input channel optional extension interface
+#define ft_E13 13
+/// @brief standardised E6 input channel optional extension interface
+#define ft_E14 14
+/// @brief standardised E7 input channel optional extension interface
+#define ft_E15 15
+/// @brief standardised E8 input channel optional extension interface
+#define ft_E16 16
+
+/// @brief bidirectional Motor 1
+#define ft_M1 1
+/// @brief bidirectional Motor 2
+#define ft_M2 2
+/// @brief bidirectional Motor 3
+#define ft_M3 3
+/// @brief bidirectional Motor 4
+#define ft_M4 4
+/// @brief bidirectional Motor 1 optional extension interface
+#define ft_M5 5
+/// @brief bidirectional Motor 1 optional extension interface
+#define ft_M6 6
+/// @brief bidirectional Motor 1 optional extension interface
+#define ft_M7 7
+/// @brief bidirectional Motor 1 optional extension interface
+#define ft_M8 8
+
+// numbers for lamp actuators, two per motor
+// NOTE: lamp 1&2, 3&4, etc can never be activated at the same time, it is either/or
+/// @brief standardised output channel 1, using half of motor 1 output
+#define ft_O1 1
+/// @brief standardised output channel 1, using the other half of motor 1 output
+#define ft_O2 2
+/// @brief standardised output channel 1, using half of motor 2 output
+#define ft_O3 3
+/// @brief standardised output channel 1, using the other half of motor 2 output
+#define ft_O4 4
+/// @brief standardised output channel 1, using half of motor 3 output
+#define ft_O5 5
+/// @brief standardised output channel 1, using the other half of motor 3 output
+#define ft_O6 6
+/// @brief standardised output channel 1, using half of motor 4 output
+#define ft_O7 7
+/// @brief standardised output channel 1, using the other half of motor 4 output
+#define ft_O8 8
+/// @brief standardised output channel 1, using half of extension motor 1 output
+#define ft_O9 9
+/// @brief standardised output channel 1, using the other half of extension motor 1 output
+#define ft_O10 10
+/// @brief standardised output channel 1, using half of extension motor 2 output
+#define ft_O11 11
+/// @brief standardised output channel 1, using the other half of extension motor 2 output
+#define ft_O12 12
+/// @brief standardised output channel 1, using half of extension motor 3 output
+#define ft_O13 13
+/// @brief standardised output channel 1, using the other half of extension motor 3 output
+#define ft_O14 14
+/// @brief standardised output channel 1, using half of extension motor 4 output
+#define ft_O15 15
+/// @brief standardised output channel 1, using the other half of extension motor 4 output
+#define ft_O16 16
+
+/// @brief standardised global ON for interface outputs
+#define ON true
+/// @brief standardised global OFF for interface outputs
+#define OFF false
 
 #endif
 
