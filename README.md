@@ -29,6 +29,8 @@
        https://www.ftcommunity.de/ftpedia/2023/2023-4/ftpedia-2023-4.pdf
        
        https://www.ftcommunity.de/ftpedia/2025/2025-2/ftpedia-2025-2.pdf
+
+       https://www.ftcommunity.de/ftpedia/2025/2025-4/ftpedia-2025-4.pdf
  
  The MIT License (MIT)
   
