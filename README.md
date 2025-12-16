@@ -13,8 +13,8 @@
  Supported Arduino's: UNO R3, UNO R4 Minima/Wifi, MEGA, Nano
  
  The library consists of two files:
- FTlegacy.h - header file for the FTmodule, FTcontroller and FTtimer class \n 
- FTlegacy.cpp - C++ implementation of class, methods and utility functions \n 
+ FTlegacy.h - header file for the FTmodule, FTcontroller and FTtimer class 
+ FTlegacy.cpp - C++ implementation of class, methods and utility functions
  
  References:
  
@@ -54,12 +54,12 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  SOFTWARE.
  
-    Version 0.6 - Added LCD 2004 option. \n
-    Version 0.7 - Serial extension capability, code cleanup, add actuators, lamps. \n
-    Version 0.8 - Used for several workstations. Actuators removed as object.  \n
+    Version 0.6 - Added LCD 2004 option.
+    Version 0.7 - Serial extension capability, code cleanup, add actuators, lamps.
+    Version 0.8 - Used for several workstations. Actuators removed as object.
     Version 0.9 - Parallel Extensions added. Analog input via parallel interface now works.
                 Consolidated and rationalised. Given Arduino UNO memory limitations,
                 two separate classes introduced: FTlegacy for legacy fischertechnik
                 interfaces and FTmodule also including 3rd party shields and controllers.
-                Version after many prototype tests. \n
-   Version 1.0 - First operational release. Added FTstepper(XY) and FTencoder classes \n
+                Version after many prototype tests.
+   Version 1.0 - First operational release. Added FTstepper(XY) and FTencoder classes
