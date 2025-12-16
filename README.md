@@ -62,4 +62,6 @@
                 two separate classes introduced: FTlegacy for legacy fischertechnik
                 interfaces and FTmodule also including 3rd party shields and controllers.
                 Version after many prototype tests.
-   Version 1.0 - First operational release. Added FTstepper(XY) and FTencoder classes
+    Version 1.0 - First operational release. Added FTstepper(XY) and FTencoder classes
+
+    
