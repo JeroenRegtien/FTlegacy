@@ -18,10 +18,15 @@
  
  References:
        https://www.ftcommunity.de/ftpedia/2014/2014-1/ftpedia-2014-1.pdf
+       
        https://www.ftcommunity.de/ftpedia/2017/2017-2/ftpedia-2017-2.pdf
+       
        https://www.ftcommunity.de/ftpedia/2017/2017-3/ftpedia-2017-3.pdf
+       
        https://www.ftcommunity.de/ftpedia/2017/2017-4/ftpedia-2017-4.pdf
+       
        https://www.ftcommunity.de/ftpedia/2023/2023-4/ftpedia-2023-4.pdf
+       
        https://www.ftcommunity.de/ftpedia/2025/2025-2/ftpedia-2025-2.pdf
  
  The MIT License (MIT)
