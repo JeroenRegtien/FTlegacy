@@ -2,28 +2,30 @@
  * Arduino Library to control a legacy parallel and serial fischertechnik(r) computing interfaces.
  * Original code by Jeroen Regtien, December 2023, with revisions since.
  *
- * Supported interfaces:
- *      1984:  Parallel Interface Commodore, IBM, Atari: 30562, 30563, 30565
- *      1991:  Parallel Universal Interface: 30520
- *      1991:  Parallel CVK Interface: XXXXX
- *      1997:  Serial Intelligent Interface: 30402
- *      2004:  ROBO interface: 93293
- * 
- * The library consists of four files:
- * FTcontroller.h - headerfile for the FTcontroller class, which covers the type of Arduino board used
- * FTcontroller.cpp - C++ implementation of class, methods and utility functions
- * FTlegacy.h - header file for the FTlegacy class containing information to read/write from/to the supported interfaces
- * FTlegacy.c - C++ implementation of class, methods and utility functions
+ *  * Supported parallel interfaces: Universal (30520), CVK (66843), Centronics (30566)
+ * Supported serial interfaces: Intelligent (30402), ROBO (93293)
  *
+ * Supported PLCs: none
+ *
+ * Supported Shields: none
+ *
+ * Supported Arduino's: UNO R3, UNO R4 Minima/Wifi, MEGA, Nano
+ *
+ * The library consists of two files:
+ * FTlegacy.h - header file for the FTmodule, FTcontroller and FTtimer class
+ * FTlegacy.cpp - C++ implementation of class, methods and utility functions
+ *  *
  * References:
  *      https://www.ftcommunity.de/ftpedia/2014/2014-1/ftpedia-2014-1.pdf
- *      https://www.ftcommunity.de/ftpedia/2014/2014-2/ftpedia-2014-2.pdf
+ *      https://www.ftcommunity.de/ftpedia/2017/2017-2/ftpedia-2017-2.pdf
+ *      https://www.ftcommunity.de/ftpedia/2017/2017-3/ftpedia-2017-3.pdf
+ *      https://www.ftcommunity.de/ftpedia/2017/2017-4/ftpedia-2017-4.pdf
  *      https://www.ftcommunity.de/ftpedia/2023/2023-4/ftpedia-2023-4.pdf
  *      https://www.ftcommunity.de/ftpedia/2025/2025-2/ftpedia-2025-2.pdf
  *
  * The MIT License (MIT)
- * 
- * Copyright (c) 2023 Jeroen Regtien
+ *
+ * Copyright (c) 2023-2025 Jeroen Regtien
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,18 +44,17 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-
-  Version 0.6 - Added LCD 2004 option
-  Version 0.7 - serial extension capability, code cleanup, add actuators, lamps
-  Version 0.7X - Added functionality for Didacta Uno and Meg. code cleanup
-  Version 0.8 - Used for several workstations. Actuators removed as object. 
-  Version 0.9 - Parallel Extensions added. Analog input via parallel interface now works.
-                Consolidated and rationalised. Given Arduino UNO memory limitations, 
-                two separate classes introduced: FTlegacy for legacy fischertechnik 
-                interfaces and FTmodule also including 3rd party shields and controllers. 
-                Version after many prototype tests.
-  Version 1.0 - First operational release. Added FTplotter and FTencoder classes \n
-
+ *
+ *  Version 0.6 - Added LCD 2004 option.
+ *  Version 0.7 - Serial extension capability, code cleanup, add actuators, lamps.
+ *  Version 0.8 - Used for several workstations. Actuators removed as object.
+ *  Version 0.9 - Parallel Extensions added. Analog input via parallel interface now works.
+ *               Consolidated and rationalised. Given Arduino UNO memory limitations,
+ *               two separate classes introduced: FTlegacy for legacy fischertechnik
+ *               interfaces and FTmodule also including 3rd party shields and controllers.
+ *               Version after many prototype tests.
+ *  Version 1.0 - First operational release. Added FTstepper(XY) and FTencoder classes
+ *
  *********************************************************************************************/
 #include "FTlegacy.h"
 
@@ -102,16 +103,15 @@ FTlegacy::FTlegacy(int typeFT, int numberFT) {
       startPin[number - 1] + 5,
       startPin[number - 1] + 6,
       startPin[number - 1] + 7);
-      
-      if (type == PAREX) {
-        numUnits = 2;
-      } else {
-        numUnits = 1;
-      }
+    if (type == PAREX) {
+      numUnits = 2;
+    } else {
+      numUnits = 1;
+    }
   } else if (type == SER) {
     // for serial assume interfaces are connected to correct serial port
   } else if (type == ROBO) {
-      type = SER;
+    type = SER;
   }
 }
 
@@ -140,7 +140,7 @@ bool FTlegacy::begin() {
     pinMode(pinParEy, INPUT);
 
     // Reset all outputs
-    setOutputs();
+    sendOutputs();
 
     // Initialize the output from the interface (our input).
     // The three possible output sources (the two timers of the analog inputs
@@ -170,7 +170,7 @@ bool FTlegacy::begin() {
       if (ftInfo > 2) {Serial.println(tEnd);}
       if (tEnd > 50) {
         result = false;
-          if (ftInfo > 2) {Serial.println("No analog signal");}
+        if (ftInfo > 2) {Serial.println("No analog signal");}
         break;
       }
     }
@@ -253,12 +253,18 @@ void FTlegacy::getInputs() {
 }
 
 //---------------------------------------------------------------------------
-// Set 8 digital outputs
-void FTlegacy::setOutputs() {
+// Get direct digintal input on a pin
+bool FTlegacy::getDirectInput(int pin) {
+  return (digitalRead(pin));
+}
+
+//---------------------------------------------------------------------------
+// Send outputs to interface / shield
+void FTlegacy::sendOutputs() {
 
   // check whether change has occurred
   bool change = false;
-  for (int i = 0; i <= 16; i++) {
+  for (int i=0; i<=16; i++) {
     if (m_prev[i] != m_out[i]) {
       change = true;
     };
@@ -267,7 +273,7 @@ void FTlegacy::setOutputs() {
   // update previous array
   if (change) {
     // update previous array
-    for (int i = 0; i <= 16; i++) {
+    for (int i=0; i<=16; i++) {
       m_prev[i] = m_out[i];
     }
 
@@ -276,8 +282,8 @@ void FTlegacy::setOutputs() {
       digitalWrite(m_pin[LOADOUT], LOW);
 
       // Shift outputs right to left
-      for (int j = numUnits; j > 0; j--) {
-        for (int i = 8; i > 0; i--) {
+      for (int j=numUnits; j>0; j--) {
+        for (int i=8; i>0; i--) {
           digitalWrite(m_pin[CLOCK], LOW);
           digitalWrite(m_pin[DATAOUT], m_out[i + (j - 1) * 8]);
           digitalWrite(m_pin[CLOCK], HIGH);
@@ -295,8 +301,8 @@ void FTlegacy::setOutputs() {
       outByte[0] = 0xC1;
       outByte[1] = 0b00000000;
       // convert m_pin array to a byte
-      for (int i = 0; i <= 7; i++) {
-        if (m_out[i + 1] == 1) {
+      for (int i=0; i<=7; i++) {
+        if (m_out[i+1] == 1) {
           outByte[1] |= 1 << i;
         }
       }
@@ -311,15 +317,15 @@ void FTlegacy::setOutputs() {
       outByte[0] = 0xC2;
       outByte[1] = 0b00000000;
       // convert m_pin array to a byte
-      for (int i = 0; i <= 7; i++) {
-        if (m_out[i + 1] == 1) {
+      for (int i=0; i<=7; i++) {
+        if (m_out[i+1] == 1) {
           outByte[1] |= 1 << i;
         }
       }
       outByte[2] = 0b00000000;
       // convert m_pin array to a byte
-      for (int i = 0; i <= 7; i++) {
-        if (m_out[i + 9] == 1) {
+      for (int i=0; i<=7; i++) {
+        if (m_out[i+9] == 1) {
           outByte[2] |= 1 << i;
         }
       }
@@ -425,10 +431,10 @@ int FTlegacy::connectedAnalog() {
   if ((tempMaxX - tempMinX) > 10) {
     // random analog data Ex
     codeX = 1;
-      if (ftInfo > 0) { Serial.println(F("Ex issue")); }
+    if (ftInfo>0) {Serial.println(F("Ex issue"));}
   }
   if ((tempMaxY - tempMinY) > 10) {
-      if (ftInfo > 0) { Serial.println(F("Ey issue")); }
+    if (ftInfo>0) {Serial.println(F("Ey issue"));}
     codeY = 2;
   }
 
@@ -522,6 +528,23 @@ int FTlegacy::ftDecodeAnalog(int xory, int firstByte) {
   return (value);
 }
 
+//---------------------------------------------------------------------------
+// get analog value directly from Arduino or shields. Pin is Ax number
+int FTlegacy::getDirectAnalog(int pinA) {
+    
+  int value = 0;
+
+#if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_UNOR4_MINIMA) || defined(ARDUINO_UNOR4_WIFI) || defined(ARDHUINO_AVR_FTDUINO)
+  if (pinA >= A0 && pinA <= A5) {
+    value = analogRead(pinA);
+  }
+#elif defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA)
+  if (pinA >= A0 && pinA <= A11) {
+    value = analogRead(pinA);
+  }
+#endif
+  return (value);
+}
 
 //---------------------------------------------------------------------------
 // Print the 8bit input buffer to the monitor
@@ -599,6 +622,7 @@ void FTlegacy::zeroInput() {
 
 //---------------------------------------------------------------------------
 //  test whether switch E is met Whilt motor M is on
+//  control loop outside procedure
 bool FTlegacy::getMotorUntil(int M, int E, bool until, motorDirection dir) {
 
   getInputs();
@@ -613,6 +637,7 @@ bool FTlegacy::getMotorUntil(int M, int E, bool until, motorDirection dir) {
 
 //---------------------------------------------------------------------------
 //  switch on actuator M until condition (ON/OFF) on switch E is met
+//  control loop inside procedure
 bool FTlegacy::setMotorUntil(int M, int E, bool until, motorDirection dir) {
 
   bool go_on = true;
@@ -632,6 +657,8 @@ bool FTlegacy::setMotorUntil(int M, int E, bool until, motorDirection dir) {
   return (go_on);
 }
 
+//---------------------------------------------------------------------------
+//  switch on actuator M until maxCount is reached on switch E
 bool FTlegacy::setMotorUntilCount(int M, int E, bool until, motorDirection dir, int maxCount) {
 
   bool go_on = true;
@@ -640,6 +667,8 @@ bool FTlegacy::setMotorUntilCount(int M, int E, bool until, motorDirection dir, 
   return (go_on);
 }
 
+//---------------------------------------------------------------------------
+//  switch on actuator M until maxCount is reached on switch E1 or switch E2 is activated
 bool FTlegacy::setMotorUntilOrCount(int M, int E1, bool until1, int E2, bool until2, motorDirection dir, int maxCount) {
 
   bool go_on = true;
@@ -657,7 +686,7 @@ bool FTlegacy::setMotorUntilOrCount(int M, int E1, bool until1, int E2, bool unt
     aState = getInput(E1);
     if (aState != lastState) {
       count++;
-        // Serial.println(count);
+      // Serial.println(count);
       lastState = aState;
     }
     if (E2 > 0) {
@@ -676,6 +705,7 @@ bool FTlegacy::setMotorUntilOrCount(int M, int E1, bool until1, int E2, bool unt
 
 //---------------------------------------------------------------------------
 //  switch on actuator M until condition (ON/OFF) on switch E is met
+//  control loop outside procedure
 bool FTlegacy::getOutputUntil(int O, int E, bool until) {
 
   getInputs();
@@ -690,6 +720,7 @@ bool FTlegacy::getOutputUntil(int O, int E, bool until) {
 
 //---------------------------------------------------------------------------
 //  switch on actuator M until condition (ON/OFF) on switch E is met
+//  control loop inside procedure
 bool FTlegacy::setOutputUntil(int O, int E, bool until) {
 
   bool go_on = true;
@@ -706,7 +737,8 @@ bool FTlegacy::setOutputUntil(int O, int E, bool until) {
   return (go_on);
 }
 
-
+//---------------------------------------------------------------------------
+//  switch on output O until maxCount is reached on switch E
 bool FTlegacy::setOutputUntilCount(int O, int E, bool until, int maxCount) {
 
   bool go_on = true;
@@ -714,6 +746,8 @@ bool FTlegacy::setOutputUntilCount(int O, int E, bool until, int maxCount) {
   return (go_on);
 }
 
+//---------------------------------------------------------------------------
+//  switch on output O until maxCount is reached on switch E1 or switch E2 is activated
 bool FTlegacy::setOutputUntilOrCount(int O, int E1, bool until1, int E2, bool until2, int maxCount) {
 
   bool go_on = true;
@@ -730,8 +764,8 @@ bool FTlegacy::setOutputUntilOrCount(int O, int E1, bool until1, int E2, bool un
     getInputs();
     aState = getInput(E1);
     if (aState != lastState) {
-        count++;
-        lastState = aState;
+      count++;
+      lastState = aState;
     }
     if (E2 > 0) {
       if (getInput(E2) == until2) {
@@ -746,6 +780,7 @@ bool FTlegacy::setOutputUntilOrCount(int O, int E1, bool until1, int E2, bool un
   setOutputOFF(O);
   return (false);
 }
+
 //---------------------------------------------------------------------------
 //  switch on Output O (assume connected between Mi and GND)
 void FTlegacy::setOutputON(int O) {
@@ -767,7 +802,7 @@ void FTlegacy::setOutput(int O, int status) {
   } else {
     m_out[O] = status;
   }
-  setOutputs();
+  sendOutputs();
 }
 
 //---------------------------------------------------------------------------
@@ -797,7 +832,7 @@ void FTlegacy::setMotorCW(int M) {
   } else {
     m_out[mIndex1(M)] = 1;
     m_out[mIndex2(M)] = 0;
-    setOutputs();
+    sendOutputs();
   }
 }
 
@@ -808,7 +843,7 @@ void FTlegacy::setMotorCCW(int M) {
   } else {
     m_out[mIndex1(M)] = 0;
     m_out[mIndex2(M)] = 1;
-    setOutputs();
+    sendOutputs();
   }
 }
 
@@ -819,7 +854,7 @@ void FTlegacy::setMotorSTOP(int M) {
   } else {
     m_out[mIndex1(M)] = 0;
     m_out[mIndex2(M)] = 0;
-    setOutputs();
+    sendOutputs();
   }
 }
 
@@ -887,9 +922,8 @@ void FTlegacy::setAllMotorsSTOP() {
   for (int i = 0; i < 17; i++) {
     m_out[i] = 0;
   }
-  setOutputs();
+  sendOutputs();
 }
-
 
 //---------------------------------------------------------------------------
 // read from serial interface from a MEGA
@@ -1113,14 +1147,16 @@ void FTlegacy::ftLCD_E(int x, int y, int E) {
 
 //---------------------------------------------------------------------------
 // debug code to allow serial prints from within libraries
-void FTcontroller::begin(char* message) {
+void FTcontroller::begin(const char* message) {
 
   int offset;
 
-  Serial.println(F("Controller begin"));
+  Serial.print(F("Controller begin: "));
+  Serial.println(message);
+
   if (board == UNO) {  // Arduino UNO works with Software Serial
 
-#if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_UNOR4_MINIMA)
+#if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_UNOR4_MINIMA) || defined(ARDUINO_UNOR4_WIFI)
     mySerial.begin(9600);
 #endif
 
@@ -1180,7 +1216,6 @@ void FTcontroller::begin(char* message) {
     lcd.print("JMMR 2023");
     delay(1000);
     lcd.clear();
-
   }
 
   else {
@@ -1257,11 +1292,11 @@ bool FTcontroller::isLCDconnected() {
   return (onLCD);
 }
 
-void FTcontroller::ftMessageToDisplay(int x, int y, char* message, bool clear) {
+void FTcontroller::ftMessageToDisplay(int x, int y, const char* message, bool clear) {
 
   int offset;
   if (clear) {
-       lcd.clear();
+    lcd.clear();
   }
 
   if (ftDisplayType == D2004) {
@@ -1284,7 +1319,7 @@ FTtimer::FTtimer(unsigned long interval)
 }
 
 bool FTtimer::ready() {
-  return _start + _interval <= millis();
+  return (_start + _interval <= millis());
 }
 
 void FTtimer::interval(unsigned long interval) {
@@ -1294,7 +1329,17 @@ void FTtimer::interval(unsigned long interval) {
 void FTtimer::reset() {
   _start = millis();
 }
+
+unsigned long FTtimer::elapsed() {
+  return (millis() - _start);
+}
+
 int translate(int, int, int, int, float);
+
+#if !defined (ARDUINO_AVR_UNO)
+// 2-dimensional array to store line segments for ascii characters
+// source: fischertechnik computing: instructions plotter/scanner
+// https://docs.fischertechnikclub.nl/computing/39462.pdf
 
 const int Ascii[94][9] = {
   { 33, 2975, 2473, 0, 0, 0, 0, 0, 0 },
@@ -1392,6 +1437,9 @@ const int Ascii[94][9] = {
   { 125, 3988, 1968, 754, 6383, 9447, 9300, 0, 0 },
   { 126, 5869, 8998, 9786, 7636, 9594, 8373, 6400, 0 }
 };
+#else 
+const int Ascii[1][1] = {0}; 
+#endif
 
 const int numAscii = 94;
 
@@ -1426,11 +1474,6 @@ bool FTstepperXY::setStepXandY(int stepsX, int stepsY) {
     dist = 0;
 
     while (xCount != distX || yCount != distY) {
-
-      //Serial.print("in set StepsXandY ");
-      //Serial.print(xStep);
-      //Serial.print(" ");
-      //Serial.println(yStep);
 
       if (abs(dist + distY) < abs(dist + distY - distX)) {  // step in x-direction
         if (xStep > 0) {                                    // +X direction
@@ -1494,23 +1537,25 @@ bool FTstepperXY::setStepXandY(int stepsX, int stepsY) {
   return (!abort);
 }
 
-void FTstepperXY::stepper(motorDirection C1, motorDirection C2, motorDirection C3) {
+//---------------------------------------------------------------------------
+// utility function controlling motors for one step
+void FTstepperXY::stepper(motorDirection dir_1, motorDirection dir_2, motorDirection dir_3) {
 
   int coil1 = coilA1;
   int coil2 = coilA2;
   int coil3 = coilB2;
 
-  if (C1 == CW) {
+  if (dir_1 == CW) {
     interface.setMotorCW(coil1);
   } else {
     interface.setMotorCCW(coil1);
   }
-  if (C2 == CW) {
+  if (dir_2 == CW) {
     interface.setMotorCW(coil2);
   } else {
     interface.setMotorCCW(coil2);
   }
-  if (C3 == CW) {
+  if (dir_3 == CW) {
     interface.setMotorCW(coil3);
   } else {
     interface.setMotorCCW(coil3);
@@ -1518,18 +1563,24 @@ void FTstepperXY::stepper(motorDirection C1, motorDirection C2, motorDirection C
   delay(5);
 }
 
+//---------------------------------------------------------------------------
+// set step in x-direction and do accounting
 void FTstepperXY::setStepX(int steps) {
   if (setStepXandY(steps, 0)) {
     currentX += steps;
   };
 }
 
+//---------------------------------------------------------------------------
+// set step in y-direction and do accounting
 void FTstepperXY::setStepY(int steps) {
   if (setStepXandY(0, steps)) {
     currentY += steps;
   };
 }
 
+//---------------------------------------------------------------------------
+// set step in x- and y-direction and do accounting
 void FTstepperXY::setStepXY(int stepsX, int stepsY) {
   if (setStepXandY(stepsX, stepsY)) {
     currentX += stepsX;
@@ -1539,7 +1590,7 @@ void FTstepperXY::setStepXY(int stepsX, int stepsY) {
 
 //---------------------------------------------------------------------------
 // set steppermotors stop
-void FTstepperXY::setStepperSTOP() {
+void FTstepperXY::setSteppersSTOP() {
   interface.setMotorSTOP(coilA1);
   interface.setMotorSTOP(coilA2);
   interface.setMotorSTOP(coilB1);
@@ -1557,7 +1608,7 @@ void FTstepperXY::setOrigin(int origX, int origY) {
 // find the physical origin determined by the end switches
 bool FTstepperXY::findOrigin(int stopX, int stopY) {
 
-  // circumvent setStepXandY becaue the origin has not yet been set
+  // circumvent setStepXandY because the origin has not yet been set
   // and out of bounds check will fail
   interface.getInputs();
   // find X origin
@@ -1597,17 +1648,13 @@ void FTstepperXY::setArea(int origX, int origY, int mX, int mY) {
 }
 
 //---------------------------------------------------------------------------
-// move to a positon posX, posY
+// move to positon posX, posY
 void FTstepperXY::moveToPosition(int posX, int posY) {
-  //Serial.print(" moveX :");
-  //Serial.print(posX);
-  //Serial.print(" moveY :");
-  //Serial.println(posY);
   setStepXY(posX - currentX, posY - currentY);
 }
 
 //---------------------------------------------------------------------------
-// move to a positon posX, posY
+// move relative deltaX and deltaY
 void FTstepperXY::moveRelative(int deltaX, int deltaY) {
   setStepXY(deltaX, deltaY);
 }
@@ -1615,36 +1662,39 @@ void FTstepperXY::moveRelative(int deltaX, int deltaY) {
 //---------------------------------------------------------------------------
 // move pen down
 void FTstepperXY::penDown() {
-  // Serial.println("pen down");
   interface.magnetON(actuator);
 }
 
 //---------------------------------------------------------------------------
 // move pen up
 void FTstepperXY::penUp() {
-  // Serial.println("pen up");
   interface.magnetOFF(actuator);
 }
 
+//---------------------------------------------------------------------------
+// draw a line from current position to (posX, posY)
 void FTstepperXY::line(int posX, int posY) {
   penDown();
   moveToPosition(posX, posY);
   penUp();
 }
 
+//---------------------------------------------------------------------------
+// draw line relative deltaX and deltaY
 void FTstepperXY::lineRelative(int deltaX, int deltaY) {
   penDown();
   moveRelative(deltaX, deltaY);
   penUp();
 }
+
 //---------------------------------------------------------------------------
-// move to a positon posX, posY
+// draw a circle with radius R
 void FTstepperXY::circle(int origX, int origY, int radius) {
   ellips(origX, origY, radius, radius);
 }
 
 //---------------------------------------------------------------------------
-// draw a circle with radius R
+// draw an ellips with radi radiusX and radiusY
 void FTstepperXY::ellips(int origX, int origY, int radiusX, int radiusY) {
 
   float theta, increment, x, y;
@@ -1664,6 +1714,9 @@ void FTstepperXY::ellips(int origX, int origY, int radiusX, int radiusY) {
   penUp();
 }
 
+//---------------------------------------------------------------------------
+// draw a box at (posX, posY) with size sizeX and sizeY
+// hatch option not yet implemented
 void FTstepperXY::box(int posX, int posY, int sizeX, int sizeY, int hatch) {
 
   moveToPosition(posX, posY);
@@ -1675,9 +1728,11 @@ void FTstepperXY::box(int posX, int posY, int sizeX, int sizeY, int hatch) {
   penUp();
 }
 
+//---------------------------------------------------------------------------
+// draw a X and Y axis
 void FTstepperXY::axis(int xPB, int xPE, int yPB, int yPE,  // Plot coordinate range B=begin
                        int xAB, int xAE, int yAB, int yAE,  // Axis coordinate range E=end
-                       bool label, char* xLabel, char* yLabel, char* title,
+                       bool label, const char* xLabel, const char* yLabel, const char* title,
                        int xInterval, int yInterval, int ticklength) {
 
   float xScale, yScale;
@@ -1688,20 +1743,20 @@ void FTstepperXY::axis(int xPB, int xPE, int yPB, int yPE,  // Plot coordinate r
   // x-axis annotation
   if (xInterval > 1) {
     for (int i = 0; i <= xInterval; i++) {
-      xScale = i * float((100 * xPE - 100 * xPB) / xInterval);
-      moveToPosition(translate(xPB, xPE, xAB, xAE, xScale / 100.), yAB);
+      xScale = i * float((100*xPE-100*xPB) / xInterval);
+      moveToPosition(translate(xPB, xPE, xAB, xAE, xScale/100.), yAB);
       lineRelative(0, -ticklength);
       sprintf(buffer, "%d", int(xPB+xScale/100));
       Serial.println(buffer);
-      plotText(translate(xPB, xPE, xAB, xAE, xScale/100.)-10, yAB -30, 2, 0, buffer);
+      plotText(translate(xPB, xPE, xAB, xAE, xScale/100.)-10, yAB-30, 2, 0, buffer);
     }
   }
 
   // y-axis annotation
   if (yInterval > 1) {
     for (int i = 0; i <= yInterval; i++) {
-      yScale = i * float((100 * yPE - 100 * yPB) / yInterval);
-      moveToPosition(xAB, translate(yPB, yPE, yAB, yAE, yScale / 100.));
+      yScale = i * float((100*yPE-100*yPB) / yInterval);
+      moveToPosition(xAB, translate(yPB, yPE, yAB, yAE, yScale/100.));
       lineRelative(-ticklength, 0);
       sprintf(buffer, "%d", int(yPB+yScale/100));
       Serial.println(buffer);
@@ -1715,10 +1770,14 @@ void FTstepperXY::axis(int xPB, int xPE, int yPB, int yPE,  // Plot coordinate r
   }
 }
 
+//---------------------------------------------------------------------------
+// translate from graph to plotter coordinate
 int translate(int PB, int PE, int AB, int AE, float x) {
   return (AB + float((x - PB) / (PE - PB)) * (AE - AB));
 }
 
+//---------------------------------------------------------------------------
+// draw a curve
 void FTstepperXY::curve(int numberOfPoints, int curveX[], int curveY[]) {
   moveToPosition(curveX[0], curveY[0]);
   for (int i = 0; i < numberOfPoints; i++) {
@@ -1726,8 +1785,9 @@ void FTstepperXY::curve(int numberOfPoints, int curveX[], int curveY[]) {
   }
 }
 
-
-void FTstepperXY::plotText(int xPos, int yPos, int scale, int direction, char* textString) {
+//---------------------------------------------------------------------------
+// plot a string of characters
+void FTstepperXY::plotText(int xPos, int yPos, int scale, int direction, const char* textString) {
   int factorX, factorY;
   float angle;
 
@@ -1739,7 +1799,17 @@ void FTstepperXY::plotText(int xPos, int yPos, int scale, int direction, char* t
   }
 }
 
+//---------------------------------------------------------------------------
+// plot a character
 void FTstepperXY::plotChar(int xPos, int yPos, int scale, int direction, char c) {
+//
+// The 2D array Ascii contains integers from which line segment coordinates can be derived
+// Drawing the sequence of line segments from the Ascii character
+// Each integer has four digits (if 3, the leading one is zero).
+// The first digit is the x-coordinate for the starting point
+// The second digit is the y-coordinate for the stating point
+// The third digit is the x-coordinate for the end point
+// The fourth digit is the y-coordinate for the end point
 
   int cIndex = int(c);
   int a;
@@ -1753,6 +1823,7 @@ void FTstepperXY::plotChar(int xPos, int yPos, int scale, int direction, char c)
 
   angle = direction * HALF_PI;
 
+#if !defined (ARDUINO_AVR_UNO)
   for (int i = 0; i < numAscii; i++) {
     if (cIndex == Ascii[i][0]) {
       penUp();
@@ -1765,8 +1836,9 @@ void FTstepperXY::plotChar(int xPos, int yPos, int scale, int direction, char c)
           xTo = int(100 * (a - 1000 * xFrom - 100 * yFrom) / 1000);
           yTo = int(100 * (a - 1000 * xFrom - 100 * yFrom) / 100 - 10 * xTo);
 
+          // Note: xPrev and yPRev are updated in drawSegment
           drawSegment(xPrev, xFrom, yPrev, yFrom, scale, angle);
-          drawSegment(xPrev, xTo, yPrev, yTo, scale, angle);
+          drawSegment(xPrev,   xTo, yPrev,   yTo, scale, angle);
 
         } else {
           penUp();
@@ -1775,10 +1847,18 @@ void FTstepperXY::plotChar(int xPos, int yPos, int scale, int direction, char c)
       break;
     }
   }
+#endif
 }
 
+//---------------------------------------------------------------------------
+// draw a line segment in any direction
 void FTstepperXY::drawSegment(int& X1, int X2, int& Y1, int Y2, int scale, float angle) {
 
+  // There is 'hidden' information in the X coordinates. Because the width of the basic
+  // is 5, numbers above 4 contain information whether the pen has to be down or up
+  // if the X2 coordinate is in excess of 4 , five is substracted and the pen should be down.
+    
+  // Note: X1 and Y1 are updated and passed back to the the caller!!
   int dX, dX0, dY, dY0;
 
   if (X2 > 4) {
@@ -1806,29 +1886,19 @@ void FTstepperXY::drawSegment(int& X1, int X2, int& Y1, int Y2, int scale, float
 // set a 'steps' stepmotor step
 void FTstepper::setStep(int steps) {
 
-  Serial.println("in set Steps");
-
   if (steps > 0) {
     for (int i = 0; i < steps; i++) {
       interface.setMotorCCW(coilA);
-      //   delay(5);
       interface.setMotorCCW(coilB);
-      //   delay(5);
       interface.setMotorCW(coilA);
-      //    delay(5);
       interface.setMotorCW(coilB);
-      //    delay(5);
     }
   } else if (steps < 0) {
     for (int i = 0; i < -steps; i++) {
       interface.setMotorCCW(coilB);
-      //   delay(5);
       interface.setMotorCCW(coilA);
-      //   delay(5);
       interface.setMotorCW(coilB);
-      //   delay(5);
       interface.setMotorCW(coilA);
-      //   delay(5);
     }
   }
 }
@@ -1890,6 +1960,8 @@ int numberOfEncoderMotors = 0;
 // the constructor
 FTencoderMotor* FTencoderMotor::sEncoder = 0;
 
+//---------------------------------------------------------------------------
+// the constructor
 FTencoderMotor::FTencoderMotor(FTlegacy* choice, int motorID, FTencoderMode modeChoice, int sensorID) {
   sEncoder = this;
   interface = choice;
@@ -1898,30 +1970,33 @@ FTencoderMotor::FTencoderMotor(FTlegacy* choice, int motorID, FTencoderMode mode
   encoderSignal = sensorID;
   encoderMode = modeChoice;  // mode=INT: Arduino pin interrupt, mode=STD: ft pin / no interrupt
   origin = 0;
-    
+
   if (modeChoice==E_INT) {
-     attachInterrupt(digitalPinToInterrupt(sensorID), FTencoderMotor::updateEncoderISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(sensorID), FTencoderMotor::updateEncoderISR, CHANGE);
   }
 };
 
+//---------------------------------------------------------------------------
+// routine called by interrupt handler
 void FTencoderMotor::updateEncoderISR() {
   if (sEncoder != 0)
     sEncoder->updateEncoder();
 }
 
+//---------------------------------------------------------------------------
+// initialise the encoder motor
 void FTencoderMotor::begin() {
 
   pinMode(encoderSignal, INPUT);
   setMotorSTOP();
 
   origin = 0;
-  maximum = 1E10;
+  maximum = 10000;
   encoderPos = 0;
-
-  Serial.print(" End Encoder begin...with motor: ");
-  Serial.println(motor);
 }
 
+//---------------------------------------------------------------------------
+// update encoder position
 void FTencoderMotor::updateEncoder() {
   // Serial.print(" update Encoder begin..");
   if (movingRight) {
@@ -1930,6 +2005,7 @@ void FTencoderMotor::updateEncoder() {
     encoderPos--;
   }
 }
+
 //---------------------------------------------------------------------------
 // set 'steps' encoder motor steps
 bool FTencoderMotor::setSteps(int steps) {
@@ -1940,31 +2016,29 @@ bool FTencoderMotor::setSteps(int steps) {
   } else if (encoderMode == E_STD) {
     result = setStepsOLD(steps);
   }
-  return (result);
+  return(result);
 }
+
 //---------------------------------------------------------------------------
 // set 'steps' encoder motor steps using standard digital input
 bool FTencoderMotor::setStepsOLD(int steps) {
-
-  Serial.print("in set Steps Standard with steps: ");
-  Serial.println(steps);
-
+    
   int state = 0;
   int prev_state = 0;
   int delta = 1;
   bool go_on = true;
 
-  if (abs(steps) > delta) {
+  if (abs(steps) >= delta) {
     while (go_on) {
       interface->getInputs();
-      Serial.println(encoderPos);
+      // Serial.println(encoderPos);
       if (steps > 0) {
         setMotorCW();
         if ((encoderPos - startPos) < (steps + delta)) {
           state = interface->getInput(sensor);
           if (state != prev_state) {
-             prev_state = state;
-             encoderPos++;
+            prev_state = state;
+            encoderPos++;
           }
         }
         if ((encoderPos - startPos) > (steps - delta)) {
@@ -1973,14 +2047,12 @@ bool FTencoderMotor::setStepsOLD(int steps) {
           startPos = encoderPos;
         }
       } else if (steps < 0) {
-        // add code for negative steps
         setMotorCCW();
         if ((encoderPos - startPos) > (steps - delta)) {
-
           state = interface->getInput(sensor);
           if (state != prev_state) {
-             prev_state = state;
-             encoderPos--;
+            prev_state = state;
+            encoderPos--;
           }
         }
         if ((encoderPos - startPos) < (steps + delta)) {
@@ -1990,18 +2062,15 @@ bool FTencoderMotor::setStepsOLD(int steps) {
         }
       }
     }
-  } else {  // allready in position
+  } else {  // already in position
     go_on = false;
-      Serial.println("already in position");
   }
-return (!go_on);
+  return (!go_on);
 }
 
 //---------------------------------------------------------------------------
 // set 'steps' encoder motor steps using intterupts digital input
 bool FTencoderMotor::setStepsNEW(int steps) {
-
-  // Serial.println("in set Steps Interrupts");
 
   // store initial encoder position
   int delta = 5;
@@ -2023,7 +2092,6 @@ bool FTencoderMotor::setStepsNEW(int steps) {
   }
   return (inPosition);
 }
-
 
 //---------------------------------------------------------------------------
 // set the origin for this stepmotor
@@ -2049,7 +2117,7 @@ void FTencoderMotor::setRange(int newOrigin, int newMaximum) {
 //---------------------------------------------------------------------------
 // move to the origin
 bool FTencoderMotor::moveToOrigin() {
-  return (moveToPosition(origin));
+  return(moveToPosition(origin));
 }
 
 //---------------------------------------------------------------------------
@@ -2060,27 +2128,26 @@ bool FTencoderMotor::moveToPosition(int position) {
   newPos = max(origin, position - startPos);
   newPos = min(newPos, maximum);
 
-  return (setSteps(position - startPos));
+  return(setSteps(position - startPos));
 }
 
 //---------------------------------------------------------------------------
 // move a relative number of steps
 bool FTencoderMotor::moveRelative(int delta) {
-  return (setSteps(delta));
+  return(setSteps(delta));
 }
 
-bool FTencoderMotor::findHome(int endPin, motorDirection dir){
+//---------------------------------------------------------------------------
+// move until endpin is reached and set origin
+bool FTencoderMotor::findHome(int endPin, motorDirection dir) {
   bool found = interface->setMotorUntil(motor, endPin, ON, dir);
   setOrigin(0);
 }
-
 
 //---------------------------------------------------------------------------
 // move a relative number of steps
 void FTencoderMotor::setMotorCW() {
   movingRight = true;
-  //Serial.println("in CW");
-  //encoderPos++;
   interface->setMotorCW(motor);
 }
 
@@ -2088,12 +2155,11 @@ void FTencoderMotor::setMotorCW() {
 // move a relative number of steps
 void FTencoderMotor::setMotorCCW() {
   movingRight = false;
-  //encoderPos--;
   interface->setMotorCCW(motor);
 }
+
 //---------------------------------------------------------------------------
 // move a relative number of steps
 void FTencoderMotor::setMotorSTOP() {
-  Serial.println("in STOP");
   interface->setMotorSTOP(motor);
 }
