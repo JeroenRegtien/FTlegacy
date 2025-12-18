@@ -13,8 +13,8 @@
  Supported Arduino's: UNO R3, UNO R4 Minima/Wifi, MEGA, Nano
  
  The library consists of two files:
- FTlegacy.h - header file for the FTmodule, FTcontroller and FTtimer class 
- FTlegacy.cpp - C++ implementation of class, methods and utility functions
+  1) FTlegacy.h - header file for the FTlegacy, FTcontroller, FTstepper, FTencoder and FTtimer classes 
+  2) FTlegacy.cpp - C++ implementation of class, methods and utility functions
  
  References:
  
